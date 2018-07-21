@@ -1,2 +1,0 @@
-# eComAPI
-Basic REST services
