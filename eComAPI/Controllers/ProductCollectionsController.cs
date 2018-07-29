@@ -1,4 +1,5 @@
-﻿using eComAPI.Models;
+﻿using eComAPI.Data.Entity;
+using eComAPI.Models;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -47,13 +48,13 @@ namespace eComAPI.Controllers
                 return BadRequest();
             }
 
-            db.Entry(productCollections).State = EntityState.Modified;
+            db.ProductCollections.Entry(productCollections).State = EntityState.Modified;
 
             try
             {
-                await db.SaveChangesAsync();
+                //await db.SaveChangesAsync();
             }
-            catch (DbUpdateConcurrencyException)
+            catch (Exception) //catch (DbUpdateConcurrencyException)
             {
                 if (!ProductCollectionsExists(id))
                 {
@@ -78,7 +79,7 @@ namespace eComAPI.Controllers
             }
 
             db.ProductCollections.Add(productCollections);
-            await db.SaveChangesAsync();
+            //await db.SaveChangesAsync();
 
             return CreatedAtRoute("DefaultApi", new { id = productCollections.CollectionId }, productCollections);
         }
@@ -94,7 +95,7 @@ namespace eComAPI.Controllers
             }
 
             db.ProductCollections.Remove(productCollections);
-            await db.SaveChangesAsync();
+            //await db.SaveChangesAsync();
 
             return Ok(productCollections);
         }

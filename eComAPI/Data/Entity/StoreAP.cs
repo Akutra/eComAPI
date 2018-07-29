@@ -21,11 +21,165 @@ namespace eComAPI.Data.Entity
         Modified = 16
     }
 
+    public class QEntities<TEntity> : ICollection, IEnumerator, IEnumerable
+    {
+        private Dictionary<string, TEntity> _entities = new Dictionary<string, TEntity>();
+        //private TEntity _current_entity;
+        private long _current_position = 0;
+
+        public int Count
+        {
+            get
+            {
+                return _entities.Count();
+            }
+        }
+
+        public object Current
+        {
+            get
+            {
+                return _entities.Values.ToArray()[_current_position];
+            }
+        }
+
+        //TODO
+        public object SyncRoot => throw new NotImplementedException();
+        //TODO
+        public bool IsSynchronized => throw new NotImplementedException();
+        //TODO
+        public void CopyTo(Array array, int index)
+        {
+            throw new NotImplementedException();
+        }
+
+        public IEnumerator GetEnumerator()
+        {
+            return _entities.Values.GetEnumerator();
+        }
+
+        public bool MoveNext()
+        {
+            if(_current_position+1<_entities.Values.Count) // if we can move next do it
+            {
+                _current_position++;
+                return true; //return success
+            }
+            return false; //return false
+        }
+
+        public void Reset()
+        {
+            _current_position = 0;
+        }
+
+        public TEntity this[string index]
+        {
+            get
+            {
+                return _entities[index];
+            }
+        }
+
+        //TODO: Where
+        public IEnumerable<TEntity> Where(Func<TEntity, bool> predicate)
+        {
+            foreach (var item in _entities.Values)
+            {
+                if (predicate(item))
+                {
+                    yield return item;
+                }
+            }
+        }
+
+        //TODO: Select
+        public IEnumerable<TEntity> Select(Func<TEntity, bool> predicate)
+        {
+            foreach (var item in _entities.Values)
+            {
+                if ( predicate(item) )
+                {
+                    yield return item;
+                }
+            }
+        }
+
+    }
+    public class QPropertyContext
+    {
+        public Dictionary<object, object> _keys = new Dictionary<object, object>();
+        public string Name = "";
+        public bool isKey = false;
+        public bool isIndexed = false;
+        public bool isRequired = false;
+        public bool isAutoIncrement = false;
+        public Type PropertyType = null;
+    }
+
+    public class QPropertyGroup
+    {
+        public List<string> _IndexFields = new List<string>();
+        public Dictionary<string, QPropertyContext> _fields = new Dictionary<string, QPropertyContext>();
+        public List<string> _requiredFields = new List<string>();
+        public Dictionary<string, int> _autoFields = new Dictionary<string, int>();
+        public long autoIndex = 0;
+        public string KeyField = "";
+
+        public Type ThisType { get; private set; }
+
+        public QPropertyGroup(Type EntityType)
+        {
+            ThisType = EntityType;
+            generatePropertyGroup();
+        }
+        private void generatePropertyGroup()
+        {
+            QPropertyContext newProperty = null;
+            var enumerator = ((IEnumerable<PropertyInfo>)ThisType.GetProperties()).GetEnumerator();
+            while (enumerator.MoveNext())
+            {
+                newProperty = new QPropertyContext();
+                var enum2 = enumerator.Current.CustomAttributes.GetEnumerator();
+                while (enum2.MoveNext())
+                {
+                    if (enum2.Current.AttributeType.ToString().Contains("KeyAttribute"))
+                    {
+                        newProperty.isKey = true;
+                        KeyField = enumerator.Current.Name;
+                    }
+
+                    if (enum2.Current.AttributeType.ToString().Contains("IndexAttribute"))
+                    {
+                        newProperty.isIndexed = true;
+                        _IndexFields.Add(enumerator.Current.Name);
+                    }
+
+                    if (enum2.Current.AttributeType.ToString().Contains("RequiredAttribute"))
+                    {
+                        newProperty.isRequired = true;
+                        _requiredFields.Add(enumerator.Current.Name);
+                    }
+
+                    if (enum2.Current.AttributeType.ToString().Contains("AutoIncrementAttribute"))
+                    {
+                        newProperty.isAutoIncrement = true;
+                        _autoFields.Add(enumerator.Current.Name, 0);
+                    }
+                }
+                newProperty.Name = enumerator.Current.Name;
+                newProperty.PropertyType = enumerator.Current.PropertyType;
+
+                _fields.Add(newProperty.Name, newProperty);
+            }
+        }
+    }
+
     public class StoreAP<TEntity> : IEnumerable<TEntity>
     {
         //private string _idxHash = "";
-        protected Dictionary<string, TEntity> _LocalStore = new Dictionary<string, TEntity>();
-        private PropertyGroup _PropertyGroup = new PropertyGroup();
+        internal Dictionary<object, TEntity> _LocalStore = new Dictionary<object, TEntity>();
+        internal APIPropertyGroup _PropertyGroup;
 
         //Expose the dictionary values with get only.
         public ICollection<TEntity> Values
@@ -36,71 +190,26 @@ namespace eComAPI.Data.Entity
             }
         }
 
-        public class PropertyContext
-        {
-            public Dictionary<object, string> _keys = new Dictionary<object, string>();
-            public string Name = "";
-            public bool isKey = false;
-            public bool isRequired = false;
-            public bool isAutoIncrement = false;
-            public Type PropertyType = null;
-        }
 
-        public class PropertyGroup
-        {
-            public List<string> _keyFields = new List<string>();
-            public Dictionary<string, PropertyContext> _fields = new Dictionary<string, PropertyContext>();
-            public Dictionary<string, int> _autoFields = new Dictionary<string, int>();
-            public List<string> _requiredFields = new List<string>();
-        }
+        public Type thisType;
 
-        public Type thisType = null;
+        internal QPropertyGroup _QuantumStruct;
 
-        //public object Current { get; set; }
+        //TODO
+        public TEntity Current { get; set; }
 
         #region Constructors
         public StoreAP()
         {
+            Current = Create(); 
             thisType = typeof(TEntity);
-            generatePropertyGroup();
+            _QuantumStruct = new QPropertyGroup(thisType);
         }
         #endregion
 
-        private void generatePropertyGroup()
-        {
-            PropertyContext newProperty = null;
-            var enumerator = ((IEnumerable<PropertyInfo>)thisType.GetProperties()).GetEnumerator();
-            while (enumerator.MoveNext())
-            {
-                newProperty = new PropertyContext();
-                var enum2 = enumerator.Current.CustomAttributes.GetEnumerator();
-                while (enum2.MoveNext())
-                {
-                    if (enum2.Current.AttributeType.ToString().Contains("KeyAttribute"))
-                    {
-                        newProperty.isKey = true;
-                        _PropertyGroup._keyFields.Add(enumerator.Current.Name);
-                    }
 
-                    if (enum2.Current.AttributeType.ToString().Contains("RequiredAttribute"))
-                    {
-                        newProperty.isRequired = true;
-                        _PropertyGroup._requiredFields.Add(enumerator.Current.Name);
-                    }
 
-                    if (enum2.Current.AttributeType.ToString().Contains("AutoIncrementAttribute"))
-                    {
-                        newProperty.isAutoIncrement = true;
-                        _PropertyGroup._autoFields.Add(enumerator.Current.Name, 0);
-                    }
-                }
-                newProperty.Name = enumerator.Current.Name;
-                newProperty.PropertyType = enumerator.Current.PropertyType;
-
-                _PropertyGroup._fields.Add(newProperty.Name, newProperty);
-            }
-        }
-
+        #region DB Creation
         public TEntity Add(TEntity entity)
         {
             //TODO Add DataBase functionality
@@ -115,48 +224,53 @@ namespace eComAPI.Data.Entity
 
             return null;
         }
-        public TEntity Attach(TEntity entity)
+        public TEntity Attach(TEntity entity, bool autofields = true)
         {
             //use a simple for loop for better performance
             string newIdxHash = generateSignature(entity);
             int increment = 0;
 
             //validate required fields
-            _PropertyGroup._requiredFields.ForEach(FieldName =>
+            _QuantumStruct._requiredFields.ForEach(FieldName =>
             {
                 //verify field content
                 if (thisType.GetField(FieldName, BindingFlags.Public | BindingFlags.Instance) == null)
-                    throw new ArgumentNullException(FieldName);
+                    throw new ArgumentNullException(FieldName + " cannot be null.");
 
                 if ((thisType.GetField(FieldName, BindingFlags.Public | BindingFlags.Instance).ToString()).Length <= 0)
                     throw new InvalidOperationException(FieldName + " cannot be empty.");
 
             });
 
-            //add key fields
-            _PropertyGroup._keyFields.ForEach(FieldName =>
-            {
-                //add key fields to their index array (dictionary)
-                _PropertyGroup._fields[FieldName]._keys.Add(
-                    thisType.GetField(FieldName, BindingFlags.Public | BindingFlags.Instance).GetValue(entity),
-                    newIdxHash);
-            });
-
             //increment autofields
-            (new List<string>(_PropertyGroup._autoFields.Keys)).ForEach(FieldName =>
+            (new List<string>(_QuantumStruct._autoFields.Keys)).ForEach(FieldName =>
             {
                 increment = 1; //TODO: create customizable value
-                _PropertyGroup._autoFields[FieldName] += increment; //increment the counter
+
+                //create a new counter reference if missing
+                if (!_QuantumStruct._autoFields.ContainsKey(FieldName))
+                    _QuantumStruct._autoFields.Add(FieldName, 0);
+
+                //increment counter
+                _QuantumStruct._autoFields[FieldName] += increment; //increment the counter
 
                 //update object with new value
                 thisType
                     .GetField(FieldName, BindingFlags.Public | BindingFlags.Instance)
-                    .SetValue(entity, _PropertyGroup._autoFields[FieldName]);
+                    .SetValue(entity, _QuantumStruct._autoFields[FieldName]);
 
             });
 
+            //add indexed fields
+            _QuantumStruct._IndexFields.ForEach(FieldName =>
+            {
+                //add key fields to their index array (dictionary)
+                _QuantumStruct._fields[FieldName]._keys.Add(
+                    thisType.GetField(FieldName, BindingFlags.Public | BindingFlags.Instance).GetValue(entity),
+                    thisType.GetField(_QuantumStruct.KeyField, BindingFlags.Public | BindingFlags.Instance).GetValue(entity));
+            });
 
-            _LocalStore.Add(newIdxHash, entity);
+            _LocalStore.Add(thisType.GetField(_QuantumStruct.KeyField, BindingFlags.Public | BindingFlags.Instance).GetValue(entity), entity);
             //if (_LocalStore.Count == 1)
             //    this.Current = entity;
 
@@ -167,18 +281,60 @@ namespace eComAPI.Data.Entity
             return (TEntity)Activator.CreateInstance(typeof(TEntity)); ;
         }
         //public virtual TDerivedEntity Create<TDerivedEntity>() where TDerivedEntity : class, TEntity;
+        #endregion
+
+        //this could possibly be Add-or-Update, TODO: make sure it would be ok to Add if not found.
+        public void Update(TEntity entity)
+        {
+            object idxHash = thisType.GetField(_QuantumStruct.KeyField, BindingFlags.Public | BindingFlags.Instance).GetValue(entity); //get the object hash for indexing
+
+            //remove the object if found
+            if (_LocalStore.ContainsKey(idxHash))
+            {
+                Remove(idxHash);
+            } else
+            {
+                throw new KeyNotFoundException("Object that doesn't exist cannot be updated.");
+            }
+
+            //Add it to the data structure, but do not increment autoincrement fields
+            Attach(entity, false);
+        }
+
+        #region Removers
         public void RemoveRange(IEnumerable entities)
         {
+            //remove each.
             foreach (TEntity _entity in entities)
             {
-                _LocalStore.Remove(generateSignature(_entity));
+                Remove(thisType.GetField(_QuantumStruct.KeyField, BindingFlags.Public | BindingFlags.Instance).GetValue(_entity)); //get a hash for the remover.
             }
         }
         public void Remove(TEntity entity)
         {
-            RemoveRange(_LocalStore.Values.Where(_entity => _entity.Equals(entity)));
+            Remove(thisType.GetField(_QuantumStruct.KeyField, BindingFlags.Public | BindingFlags.Instance).GetValue(entity)); //get a hash for the remover.
         }
 
+        public bool Remove(object indexHash)
+        {
+            if (_LocalStore.Remove(indexHash)) //remove object
+            {
+                //remove the indices for the object
+                _QuantumStruct._IndexFields.ForEach(FieldName =>
+                {
+                    if (_QuantumStruct._fields[FieldName]._keys.ContainsKey(indexHash))
+                    {
+                        _QuantumStruct._fields[FieldName]._keys.Remove(indexHash);
+                    }
+                    
+                });
+                return true; //remove completed.
+            }
+            return false; //remove did not succeed.
+        }
+        #endregion
+
+        #region DB Retriever
         /// <summary>
         /// Classic 'DBSet' style find...
         /// </summary>
@@ -202,10 +358,10 @@ namespace eComAPI.Data.Entity
                 {
                     //try to locate indexed object and return it
                     //on error return empty object (default)
-                    return _LocalStore[(_PropertyGroup._fields[_PropertyGroup._keyFields[0]]._keys[_thisKey])];
+                    return _LocalStore[(_QuantumStruct._fields[_QuantumStruct.KeyField]._keys[_thisKey])];
 
                 }
-                catch (Exception _e) { } //Not found? Do nothing and return empty object, TODO add exception handling
+                catch (Exception _e) { } //Not found? Do nothing and return empty object, TODO add more handling
             }
 
             return default(TEntity);
@@ -254,10 +410,10 @@ namespace eComAPI.Data.Entity
                     //on error return empty object (default)
                     cancellationToken.ThrowIfCancellationRequested(); //allow it to be cancelled.
 
-                    return Task.FromResult(_LocalStore[(_PropertyGroup._fields[_PropertyGroup._keyFields[0]]._keys[_thisKey])]);
+                    return Task.FromResult(_LocalStore[(_QuantumStruct._fields[_QuantumStruct.KeyField]._keys[_thisKey])]);
 
                 }
-                catch (Exception _e) { } //Not found? Do nothing and return empty object, TODO add exception handling
+                catch (Exception _e) { } //Not found? Do nothing and return empty object, TODO more handling
             }
 
             return Task.FromResult(default(TEntity));
@@ -272,7 +428,9 @@ namespace eComAPI.Data.Entity
         {
             return FindAsync(null, keyValues); //no need to duplicate code here.
         }
+        #endregion
 
+        #region Serializers and Encoders
         public string generateSignature(object SerialObj)
         {
             MemoryStream mStream = new MemoryStream();
@@ -306,6 +464,7 @@ namespace eComAPI.Data.Entity
             csum &= 0xff;
             return csum.ToString("X2");
         }
+        #endregion
 
         #region Enumerators
         public IEnumerator<TEntity> GetEnumerator()
@@ -319,5 +478,126 @@ namespace eComAPI.Data.Entity
         }
         #endregion
 
+        internal List<APIPropertyGroup> _CurrentValues = new List<APIPropertyGroup>();
+        //internal APIEntityEntry<TEntity> _currentEntry = new APIEntityEntry<TEntity>();
+
+        #region Delegates
+        //Delegates
+        internal delegate void UpdateAccessor(TEntity entity);
+        #endregion
+
+        public eComAPI.Data.Entity.StoreAP<TEntity>.APIEntityEntry Entry(TEntity SelectedEntity)
+        {
+            //return new eComAPI.Data.Entity.StoreAP<TEntity>.APIEntityEntry<TEntity>();
+            APIEntityEntry newEntry = new APIEntityEntry(Current);
+
+            newEntry.updater = this.Update;
+            //_currentEntry.SetEntity(SelectedEntity);
+            return newEntry;
+        }
+
+        public class APIEntityEntry //: StoreAP<TEntity>
+        {
+            public Data.Entity.EntityState State { get; set; }
+            internal UpdateAccessor updater;
+
+            private APIPropertyGroup _originalvalues;
+            private APIPropertyGroup _currentvalues;
+            private APIPropertyGroup _laststorevalues;
+
+            private TEntity _current_entity;
+            public APIPropertyGroup CurrentValues
+            {
+                get { return _currentvalues; }
+                set { _currentvalues = value; }
+            }
+
+            public APIPropertyGroup OriginalValues
+            {
+                get { return _originalvalues; }
+                set { _originalvalues = value; }
+            }
+
+            /*
+            public APIEntityEntry(TEntity CurrentEntity)
+            {
+                _current_entity = CurrentEntity;
+                _properties = new StoreAP<TEntity>.APIPropertyGroup(CurrentEntity);
+            }*/
+            public APIEntityEntry(TEntity entryEntity)
+            {
+                _current_entity = entryEntity;
+                _currentvalues = new APIPropertyGroup(_current_entity);
+                _originalvalues = new APIPropertyGroup(_current_entity);
+            }
+
+            public void SetEntity(TEntity newEntity)
+            {
+                _current_entity = newEntity;
+                _currentvalues = new APIPropertyGroup(_current_entity);
+            }
+
+            public APIPropertyGroup Property(string propertyName)
+            {
+                return null;
+            }
+        }
+
+        /// <summary>
+        /// Properties collection
+        /// </summary>
+        public class APIPropertyGroup //: StoreAP<TEntity>
+        {
+            private TEntity _CurrentEntity;
+
+            private Type thisType = null;
+
+            public APIPropertyGroup(TEntity CurrentEntity)
+            {
+                thisType = CurrentEntity.GetType();
+                _CurrentEntity = CurrentEntity;
+            }
+            /*
+            public APIPropertyValues()
+            {
+                _CurrentEntity = Current;
+            }*/
+
+            public void SetValues(object newValues)
+            {
+
+            }
+
+            public object this[string propertyName]
+            {
+                get
+                {
+                    return thisType.GetField(propertyName, BindingFlags.Public | BindingFlags.Instance).GetValue(_CurrentEntity);
+                }
+                set
+                {
+                    thisType
+                        .GetField(propertyName, BindingFlags.Public | BindingFlags.Instance)
+                        .SetValue(_CurrentEntity, value);
+                }
+            }
+        }
+
+        public class APIPropertyContext
+        {
+            private TEntity _CurrentEntity;
+            private Type thisType = null;
+
+            public object CurrentValue { get; set; }
+            public bool isModified { get; set; }
+            public string PropertyName { get; set; }
+
+            public APIPropertyContext(TEntity CurrentEntity)
+            {
+                _CurrentEntity = CurrentEntity;
+            }
+
+
+        }
     }
 }

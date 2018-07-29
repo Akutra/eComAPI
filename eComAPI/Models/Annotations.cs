@@ -16,6 +16,14 @@ namespace eComAPI.Models
             }
         }
 
+        public class IndexAttribute : Attribute
+        {
+            public IndexAttribute()
+            {
+
+            }
+        }
+
         [DebuggerStepThrough]
         public static void ArgumentNotNull(object argument, string argumentName)
         {

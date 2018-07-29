@@ -35,6 +35,11 @@ namespace eComAPI.Models
             //add the user
             Members.Add(newUser);
 
+            QEntities<Member> qEntities = new QEntities<Member>();
+            qEntities.Where(q => q.MemberName == "Akutra").Select(q => q);
+
+            //Members.Entry(newUser).CurrentValues
+
             //create default collection
             ProductCollection newCollection = new ProductCollection();
             newCollection.Name = "eBooks";
