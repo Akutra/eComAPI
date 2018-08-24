@@ -23,7 +23,7 @@ namespace eComAPI.Data.Entity
 
     public class QEntities<TEntity> : ICollection, IEnumerator, IEnumerable
     {
-        private Dictionary<string, TEntity> _entities = new Dictionary<string, TEntity>();
+        private Dictionary<object, TEntity> _entities = new Dictionary<object, TEntity>();
         //private TEntity _current_entity;
         private long _current_position = 0;
 
@@ -227,7 +227,7 @@ namespace eComAPI.Data.Entity
         public TEntity Attach(TEntity entity, bool autofields = true)
         {
             //use a simple for loop for better performance
-            string newIdxHash = generateSignature(entity);
+            //string newIdxHash = generateSignature(entity);
             int increment = 0;
 
             //validate required fields
@@ -266,11 +266,11 @@ namespace eComAPI.Data.Entity
             {
                 //add key fields to their index array (dictionary)
                 _QuantumStruct._fields[FieldName]._keys.Add(
-                    thisType.GetField(FieldName, BindingFlags.Public | BindingFlags.Instance).GetValue(entity),
+                    eComAPI.Data.Entity.Comparables.getEquatable(thisType.GetField(FieldName, BindingFlags.Public | BindingFlags.Instance).GetValue(entity)),
                     thisType.GetField(_QuantumStruct.KeyField, BindingFlags.Public | BindingFlags.Instance).GetValue(entity));
             });
 
-            _LocalStore.Add(thisType.GetField(_QuantumStruct.KeyField, BindingFlags.Public | BindingFlags.Instance).GetValue(entity), entity);
+            _LocalStore.Add(eComAPI.Data.Entity.Comparables.getEquatable(thisType.GetField(_QuantumStruct.KeyField, BindingFlags.Public | BindingFlags.Instance).GetValue(entity)), entity);
             //if (_LocalStore.Count == 1)
             //    this.Current = entity;
 
@@ -284,21 +284,33 @@ namespace eComAPI.Data.Entity
         #endregion
 
         //this could possibly be Add-or-Update, TODO: make sure it would be ok to Add if not found.
-        public void Update(TEntity entity)
+        public void Update(TEntity entity, object idxField = null)
         {
-            object idxHash = thisType.GetField(_QuantumStruct.KeyField, BindingFlags.Public | BindingFlags.Instance).GetValue(entity); //get the object hash for indexing
+            object idxHash = idxField;
+            object idxOrig = thisType.GetField(_QuantumStruct.KeyField, BindingFlags.Public | BindingFlags.Instance).GetValue(entity);
+            if (idxHash == null) { idxHash = idxOrig; }//get the object hash for indexing
+
+            idxHash = eComAPI.Data.Entity.Comparables.getEquatable(idxHash); //ensure dictionary can handle the key object.
 
             //remove the object if found
             if (_LocalStore.ContainsKey(idxHash))
             {
-                Remove(idxHash);
+                if( idxOrig.Equals(idxHash) )
+                {
+
+                } else
+                {
+                    //Remove and add it again if the KeyField has changed
+                    Remove(idxHash);
+                    //Add it to the data structure, but do not increment autoincrement fields
+                    Attach(entity, false);
+                }
+
             } else
             {
                 throw new KeyNotFoundException("Object that doesn't exist cannot be updated.");
             }
 
-            //Add it to the data structure, but do not increment autoincrement fields
-            Attach(entity, false);
         }
 
         #region Removers
@@ -358,7 +370,7 @@ namespace eComAPI.Data.Entity
                 {
                     //try to locate indexed object and return it
                     //on error return empty object (default)
-                    return _LocalStore[(_QuantumStruct._fields[_QuantumStruct.KeyField]._keys[_thisKey])];
+                    return _LocalStore[eComAPI.Data.Entity.Comparables.getEquatable(_QuantumStruct._fields[_QuantumStruct.KeyField]._keys[_thisKey])];
 
                 }
                 catch (Exception _e) { } //Not found? Do nothing and return empty object, TODO add more handling
@@ -410,7 +422,7 @@ namespace eComAPI.Data.Entity
                     //on error return empty object (default)
                     cancellationToken.ThrowIfCancellationRequested(); //allow it to be cancelled.
 
-                    return Task.FromResult(_LocalStore[(_QuantumStruct._fields[_QuantumStruct.KeyField]._keys[_thisKey])]);
+                    return Task.FromResult(_LocalStore[eComAPI.Data.Entity.Comparables.getEquatable(_QuantumStruct._fields[_QuantumStruct.KeyField]._keys[_thisKey])]);
 
                 }
                 catch (Exception _e) { } //Not found? Do nothing and return empty object, TODO more handling
@@ -483,7 +495,8 @@ namespace eComAPI.Data.Entity
 
         #region Delegates
         //Delegates
-        internal delegate void UpdateAccessor(TEntity entity);
+        internal delegate void UpdateAccessor(TEntity entity, object idxField = null);
+        internal delegate bool UpdateFieldAccessor(string FieldName, object FieldValue);
         #endregion
 
         public eComAPI.Data.Entity.StoreAP<TEntity>.APIEntityEntry Entry(TEntity SelectedEntity)
@@ -503,9 +516,19 @@ namespace eComAPI.Data.Entity
 
             private APIPropertyGroup _originalvalues;
             private APIPropertyGroup _currentvalues;
-            private APIPropertyGroup _laststorevalues;
+            //private APIPropertyGroup _laststorevalues;
 
             private TEntity _current_entity;
+
+            internal bool UpdateField(string FieldName, object FieldValue)
+            {
+                if( _originalvalues[FieldName]!=FieldValue)
+                {
+                    _currentvalues[FieldName] = FieldValue;
+                    return true;
+                }
+                return false;
+            }
             public APIPropertyGroup CurrentValues
             {
                 get { return _currentvalues; }
@@ -537,9 +560,13 @@ namespace eComAPI.Data.Entity
                 _currentvalues = new APIPropertyGroup(_current_entity);
             }
 
-            public APIPropertyGroup Property(string propertyName)
+            public APIPropertyContext Property(string propertyName)
             {
-                return null;
+                APIPropertyContext _newPropContext = new APIPropertyContext(_current_entity);
+                _newPropContext._thisFieldName = propertyName;
+                _newPropContext.SetField(_current_entity.GetType().GetField(propertyName, BindingFlags.Public | BindingFlags.Instance));
+                _newPropContext.fieldupdater = UpdateField;
+                return _newPropContext;
             }
         }
 
@@ -586,15 +613,40 @@ namespace eComAPI.Data.Entity
         public class APIPropertyContext
         {
             private TEntity _CurrentEntity;
-            private Type thisType = null;
+            public Type thisType { get; private set; }
 
-            public object CurrentValue { get; set; }
+            private FieldInfo _thisField;
+
+            internal void SetField(FieldInfo currentFieldInfo)
+            {
+                thisType = currentFieldInfo.FieldType;
+                _thisField = currentFieldInfo;
+            }
+
+            internal string _thisFieldName = "";
+
+            internal UpdateFieldAccessor fieldupdater;
+
+            public object CurrentValue
+            {
+                get
+                {
+                    return _thisField.GetValue(_CurrentEntity);
+                }
+                set
+                {
+                    isModified = fieldupdater(_thisFieldName, value);
+                    //_thisField.SetValue(_CurrentEntity, value);
+                }
+            }
+
             public bool isModified { get; set; }
             public string PropertyName { get; set; }
 
             public APIPropertyContext(TEntity CurrentEntity)
             {
                 _CurrentEntity = CurrentEntity;
+                thisType = CurrentEntity.GetType();
             }
 
 
