@@ -202,7 +202,7 @@ namespace eComAPI.Data.Entity
         public StoreAP()
         {
             Current = Create(); 
-            thisType = typeof(TEntity);
+            thisType = Current.GetType();
             _QuantumStruct = new QPropertyGroup(thisType);
         }
         #endregion
@@ -234,10 +234,10 @@ namespace eComAPI.Data.Entity
             _QuantumStruct._requiredFields.ForEach(FieldName =>
             {
                 //verify field content
-                if (thisType.GetField(FieldName, BindingFlags.Public | BindingFlags.Instance) == null)
+                if (thisType.GetProperty(FieldName).GetValue(entity) == null)
                     throw new ArgumentNullException(FieldName + " cannot be null.");
 
-                if ((thisType.GetField(FieldName, BindingFlags.Public | BindingFlags.Instance).ToString()).Length <= 0)
+                if ((thisType.GetProperty(FieldName).GetValue(entity).ToString()).Length <= 0)
                     throw new InvalidOperationException(FieldName + " cannot be empty.");
 
             });
@@ -256,7 +256,7 @@ namespace eComAPI.Data.Entity
 
                 //update object with new value
                 thisType
-                    .GetField(FieldName, BindingFlags.Public | BindingFlags.Instance)
+                    .GetProperty(FieldName)
                     .SetValue(entity, _QuantumStruct._autoFields[FieldName]);
 
             });
@@ -266,11 +266,11 @@ namespace eComAPI.Data.Entity
             {
                 //add key fields to their index array (dictionary)
                 _QuantumStruct._fields[FieldName]._keys.Add(
-                    eComAPI.Data.Entity.Comparables.getEquatable(thisType.GetField(FieldName, BindingFlags.Public | BindingFlags.Instance).GetValue(entity)),
-                    thisType.GetField(_QuantumStruct.KeyField, BindingFlags.Public | BindingFlags.Instance).GetValue(entity));
+                    eComAPI.Data.Entity.Comparables.getEquatable(thisType.GetProperty(FieldName).GetValue(entity)),
+                    thisType.GetProperty(_QuantumStruct.KeyField).GetValue(entity));
             });
 
-            _LocalStore.Add(eComAPI.Data.Entity.Comparables.getEquatable(thisType.GetField(_QuantumStruct.KeyField, BindingFlags.Public | BindingFlags.Instance).GetValue(entity)), entity);
+            _LocalStore.Add(eComAPI.Data.Entity.Comparables.getEquatable(thisType.GetProperty(_QuantumStruct.KeyField).GetValue(entity)), entity);
             //if (_LocalStore.Count == 1)
             //    this.Current = entity;
 
@@ -287,9 +287,9 @@ namespace eComAPI.Data.Entity
         public void Update(TEntity entity, object idxField = null)
         {
             object idxHash = idxField;
-            object idxOrig = thisType.GetField(_QuantumStruct.KeyField, BindingFlags.Public | BindingFlags.Instance).GetValue(entity);
+            object idxOrig = thisType.GetProperty(_QuantumStruct.KeyField).GetValue(entity);
             if (idxHash == null) { idxHash = idxOrig; }//get the object hash for indexing
-
+            TEntity OrigEntity;
             idxHash = eComAPI.Data.Entity.Comparables.getEquatable(idxHash); //ensure dictionary can handle the key object.
 
             //remove the object if found
@@ -297,7 +297,8 @@ namespace eComAPI.Data.Entity
             {
                 if( idxOrig.Equals(idxHash) )
                 {
-
+                    OrigEntity = _LocalStore[idxHash];
+                    reviseObj(ref OrigEntity, ref entity);
                 } else
                 {
                     //Remove and add it again if the KeyField has changed
@@ -313,18 +314,40 @@ namespace eComAPI.Data.Entity
 
         }
 
+        public void reviseObj(ref TEntity cEntity, ref TEntity nEntity)
+        {
+
+            foreach(QPropertyContext property in _QuantumStruct._fields.Values)
+            {
+                SetFields(property.Name, ref cEntity, ref nEntity);
+            }
+        }
+
+        public void SetFields(string propertyName, ref TEntity cEntity, ref TEntity nEntity)
+        {
+            var cValue = thisType.GetProperty(propertyName).GetValue(cEntity);
+            var nValue = thisType.GetProperty(propertyName).GetValue(nEntity);
+
+            if (cValue != nValue)
+            {
+                thisType
+                    .GetProperty(propertyName)
+                    .SetValue(cEntity, nValue);
+            }
+        }
+
         #region Removers
         public void RemoveRange(IEnumerable entities)
         {
             //remove each.
             foreach (TEntity _entity in entities)
             {
-                Remove(thisType.GetField(_QuantumStruct.KeyField, BindingFlags.Public | BindingFlags.Instance).GetValue(_entity)); //get a hash for the remover.
+                Remove(thisType.GetProperty(_QuantumStruct.KeyField).GetValue(_entity)); //get a hash for the remover.
             }
         }
         public void Remove(TEntity entity)
         {
-            Remove(thisType.GetField(_QuantumStruct.KeyField, BindingFlags.Public | BindingFlags.Instance).GetValue(entity)); //get a hash for the remover.
+            Remove(thisType.GetProperty(_QuantumStruct.KeyField).GetValue(entity)); //get a hash for the remover.
         }
 
         public bool Remove(object indexHash)
@@ -550,21 +573,21 @@ namespace eComAPI.Data.Entity
             public APIEntityEntry(TEntity entryEntity)
             {
                 _current_entity = entryEntity;
-                _currentvalues = new APIPropertyGroup(_current_entity);
-                _originalvalues = new APIPropertyGroup(_current_entity);
+                _currentvalues = new APIPropertyGroup(ref _current_entity);
+                _originalvalues = new APIPropertyGroup(ref _current_entity);
             }
 
-            public void SetEntity(TEntity newEntity)
+            public void SetEntity(ref TEntity newEntity)
             {
                 _current_entity = newEntity;
-                _currentvalues = new APIPropertyGroup(_current_entity);
+                _currentvalues = new APIPropertyGroup(ref _current_entity);
             }
 
             public APIPropertyContext Property(string propertyName)
             {
-                APIPropertyContext _newPropContext = new APIPropertyContext(_current_entity);
+                APIPropertyContext _newPropContext = new APIPropertyContext(ref _current_entity);
                 _newPropContext._thisFieldName = propertyName;
-                _newPropContext.SetField(_current_entity.GetType().GetField(propertyName, BindingFlags.Public | BindingFlags.Instance));
+                _newPropContext.SetField(_current_entity.GetType().GetProperty(propertyName));
                 _newPropContext.fieldupdater = UpdateField;
                 return _newPropContext;
             }
@@ -579,7 +602,7 @@ namespace eComAPI.Data.Entity
 
             private Type thisType = null;
 
-            public APIPropertyGroup(TEntity CurrentEntity)
+            public APIPropertyGroup(ref TEntity CurrentEntity)
             {
                 thisType = CurrentEntity.GetType();
                 _CurrentEntity = CurrentEntity;
@@ -599,12 +622,12 @@ namespace eComAPI.Data.Entity
             {
                 get
                 {
-                    return thisType.GetField(propertyName, BindingFlags.Public | BindingFlags.Instance).GetValue(_CurrentEntity);
+                    return thisType.GetProperty(propertyName).GetValue(_CurrentEntity);
                 }
                 set
                 {
                     thisType
-                        .GetField(propertyName, BindingFlags.Public | BindingFlags.Instance)
+                        .GetProperty(propertyName)
                         .SetValue(_CurrentEntity, value);
                 }
             }
@@ -615,12 +638,13 @@ namespace eComAPI.Data.Entity
             private TEntity _CurrentEntity;
             public Type thisType { get; private set; }
 
-            private FieldInfo _thisField;
+            private PropertyInfo _thisField;
 
-            internal void SetField(FieldInfo currentFieldInfo)
+            internal void SetField(PropertyInfo currentFieldInfo)
             {
-                thisType = currentFieldInfo.FieldType;
+                thisType = currentFieldInfo.PropertyType;
                 _thisField = currentFieldInfo;
+                fieldupdater(_thisFieldName, _thisField.GetValue(_CurrentEntity));
             }
 
             internal string _thisFieldName = "";
@@ -636,14 +660,14 @@ namespace eComAPI.Data.Entity
                 set
                 {
                     isModified = fieldupdater(_thisFieldName, value);
-                    //_thisField.SetValue(_CurrentEntity, value);
+                    _thisField.SetValue(_CurrentEntity, value);
                 }
             }
 
             public bool isModified { get; set; }
             public string PropertyName { get; set; }
 
-            public APIPropertyContext(TEntity CurrentEntity)
+            public APIPropertyContext(ref TEntity CurrentEntity)
             {
                 _CurrentEntity = CurrentEntity;
                 thisType = CurrentEntity.GetType();

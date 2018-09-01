@@ -57,8 +57,8 @@ C:\Users\Atenosis\Documents\Visual Studio 2017\Projects\eComAPI\eComAPI\bin\Newt
 C:\Users\Atenosis\Documents\Visual Studio 2017\Projects\eComAPI\eComAPI\bin\System.Net.Http.Formatting.xml
 C:\Users\Atenosis\Documents\Visual Studio 2017\Projects\eComAPI\eComAPI\bin\System.Web.Http.xml
 C:\Users\Atenosis\Documents\Visual Studio 2017\Projects\eComAPI\eComAPI\bin\System.Web.Http.WebHost.xml
-C:\Users\Atenosis\Documents\Visual Studio 2017\Projects\eComAPI\eComAPI\obj\Debug\eComAPI.csprojAssemblyReference.cache
 C:\Users\Atenosis\Documents\Visual Studio 2017\Projects\eComAPI\eComAPI\obj\Debug\eComAPI.csproj.CoreCompileInputs.cache
 C:\Users\Atenosis\Documents\Visual Studio 2017\Projects\eComAPI\eComAPI\obj\Debug\eComAPI.csproj.CopyComplete
 C:\Users\Atenosis\Documents\Visual Studio 2017\Projects\eComAPI\eComAPI\obj\Debug\eComAPI.dll
 C:\Users\Atenosis\Documents\Visual Studio 2017\Projects\eComAPI\eComAPI\obj\Debug\eComAPI.pdb
+C:\Users\Atenosis\Documents\Visual Studio 2017\Projects\eComAPI\eComAPI\obj\Debug\eComAPI.csprojAssemblyReference.cache

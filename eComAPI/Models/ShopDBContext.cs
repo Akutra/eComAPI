@@ -17,6 +17,9 @@ namespace eComAPI.Models
 
         public ShopDBContext()
         {
+            Members = new StoreAP<Member>();
+            Products = new StoreAP<Product>();
+            ProductCollections = new StoreAP<ProductCollection>();
         }
 
         public StoreAP<Product> Products { get; set; }
