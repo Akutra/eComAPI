@@ -27,6 +27,47 @@ namespace eComAPI.Data.Entity
         //private TEntity _current_entity;
         private long _current_position = 0;
 
+        //TODO
+        public QEntities(IEnumerable<TEntity> collection)
+        {
+            AddRange(collection);
+        }
+
+        public int AddRange(IEnumerable<TEntity> collection)
+        {
+            int rt = 0;
+            foreach (TEntity _e in collection)
+            {
+                rt += Add(_e) ? 1 : 0;
+            }
+            return rt;
+        }
+
+        public bool Add(TEntity entity)
+        {
+            var _key = getKeyValue(entity);
+
+            if (_key != null)
+            {
+                _entities.Add(_key, entity); return true;
+            }
+            return false;
+        }
+
+        public object getKeyValue(TEntity entity)
+        {
+            Type _thisType = typeof(TEntity);
+
+            foreach(PropertyInfo property in _thisType.GetProperties() )
+            {
+                if (property.CustomAttributes.Where(a => a.AttributeType.Name == "KeyAttribute").Select(a => a.AttributeType.Name ).Count() > 0 )
+                {
+                    return property.GetValue(entity);
+                }
+            }
+            return null;
+        }
+
         public int Count
         {
             get
@@ -230,18 +271,6 @@ namespace eComAPI.Data.Entity
             //string newIdxHash = generateSignature(entity);
             int increment = 0;
 
-            //validate required fields
-            _QuantumStruct._requiredFields.ForEach(FieldName =>
-            {
-                //verify field content
-                if (thisType.GetProperty(FieldName).GetValue(entity) == null)
-                    throw new ArgumentNullException(FieldName + " cannot be null.");
-
-                if ((thisType.GetProperty(FieldName).GetValue(entity).ToString()).Length <= 0)
-                    throw new InvalidOperationException(FieldName + " cannot be empty.");
-
-            });
-
             //increment autofields
             (new List<string>(_QuantumStruct._autoFields.Keys)).ForEach(FieldName =>
             {
@@ -258,6 +287,18 @@ namespace eComAPI.Data.Entity
                 thisType
                     .GetProperty(FieldName)
                     .SetValue(entity, _QuantumStruct._autoFields[FieldName]);
+
+            });
+
+            //validate required fields
+            _QuantumStruct._requiredFields.ForEach(FieldName =>
+            {
+                //verify field content
+                if (thisType.GetProperty(FieldName).GetValue(entity) == null)
+                    throw new ArgumentNullException(FieldName + " cannot be null.");
+
+                if ((thisType.GetProperty(FieldName).GetValue(entity).ToString()).Length <= 0)
+                    throw new InvalidOperationException(FieldName + " cannot be empty.");
 
             });
 
@@ -278,7 +319,7 @@ namespace eComAPI.Data.Entity
         }
         public TEntity Create()
         {
-            return (TEntity)Activator.CreateInstance(typeof(TEntity)); ;
+            return (TEntity)Activator.CreateInstance(typeof(TEntity));
         }
         //public virtual TDerivedEntity Create<TDerivedEntity>() where TDerivedEntity : class, TEntity;
         #endregion
@@ -316,23 +357,29 @@ namespace eComAPI.Data.Entity
 
         public void reviseObj(ref TEntity cEntity, ref TEntity nEntity)
         {
-
             foreach(QPropertyContext property in _QuantumStruct._fields.Values)
             {
-                SetFields(property.Name, ref cEntity, ref nEntity);
+                if (thisType.GetProperty(property.Name).GetValue(cEntity) != thisType.GetProperty(property.Name).GetValue(nEntity))
+                {
+                    thisType
+                        .GetProperty(property.Name)
+                        .SetValue(cEntity, thisType.GetProperty(property.Name).GetValue(nEntity));
+                }
             }
         }
 
-        public void SetFields(string propertyName, ref TEntity cEntity, ref TEntity nEntity)
+        public static void SetFields(string propertyName, ref TEntity orgEntity, ref TEntity newEntity)
         {
-            var cValue = thisType.GetProperty(propertyName).GetValue(cEntity);
-            var nValue = thisType.GetProperty(propertyName).GetValue(nEntity);
+            Type _thisType = typeof(TEntity);
 
-            if (cValue != nValue)
+            var cValue = _thisType.GetProperty(propertyName).GetValue(orgEntity);
+            var nValue = _thisType.GetProperty(propertyName).GetValue(newEntity);
+
+            if (_thisType.GetProperty(propertyName).GetValue(orgEntity) != _thisType.GetProperty(propertyName).GetValue(newEntity))
             {
-                thisType
+                _thisType
                     .GetProperty(propertyName)
-                    .SetValue(cEntity, nValue);
+                    .SetValue(orgEntity, _thisType.GetProperty(propertyName).GetValue(newEntity));
             }
         }
 
@@ -520,22 +567,34 @@ namespace eComAPI.Data.Entity
         //Delegates
         internal delegate void UpdateAccessor(TEntity entity, object idxField = null);
         internal delegate bool UpdateFieldAccessor(string FieldName, object FieldValue);
+        internal delegate void UpdateStateAccessor(EntityState newState);
         #endregion
 
         public eComAPI.Data.Entity.StoreAP<TEntity>.APIEntityEntry Entry(TEntity SelectedEntity)
         {
             //return new eComAPI.Data.Entity.StoreAP<TEntity>.APIEntityEntry<TEntity>();
-            APIEntityEntry newEntry = new APIEntityEntry(Current);
+            APIEntityEntry newEntry = new APIEntityEntry(SelectedEntity);
 
-            newEntry.updater = this.Update;
+            //newEntry.updater = this.Update;
             //_currentEntry.SetEntity(SelectedEntity);
             return newEntry;
         }
 
-        public class APIEntityEntry //: StoreAP<TEntity>
+        public eComAPI.Data.Entity.StoreAP<TEntity>.APIEntityEntry Entry()
         {
+            //return new eComAPI.Data.Entity.StoreAP<TEntity>.APIEntityEntry<TEntity>();
+            APIEntityEntry newEntry = new APIEntityEntry(Current);
+
+            //newEntry.updater = this.Update;
+            //_currentEntry.SetEntity(SelectedEntity);
+            return newEntry;
+        }
+
+        public class APIEntityEntry
+        {
+            //TODO: State change for DB activity.
             public Data.Entity.EntityState State { get; set; }
-            internal UpdateAccessor updater;
+            //internal UpdateAccessor updater;
 
             private APIPropertyGroup _originalvalues;
             private APIPropertyGroup _currentvalues;
@@ -548,10 +607,17 @@ namespace eComAPI.Data.Entity
                 if( _originalvalues[FieldName]!=FieldValue)
                 {
                     _currentvalues[FieldName] = FieldValue;
+                    State = EntityState.Modified;
                     return true;
                 }
                 return false;
             }
+
+            internal void UpdateState(EntityState newState)
+            {
+                State = newState;
+            }
+
             public APIPropertyGroup CurrentValues
             {
                 get { return _currentvalues; }
@@ -564,23 +630,34 @@ namespace eComAPI.Data.Entity
                 set { _originalvalues = value; }
             }
 
-            /*
-            public APIEntityEntry(TEntity CurrentEntity)
-            {
-                _current_entity = CurrentEntity;
-                _properties = new StoreAP<TEntity>.APIPropertyGroup(CurrentEntity);
-            }*/
             public APIEntityEntry(TEntity entryEntity)
             {
-                _current_entity = entryEntity;
-                _currentvalues = new APIPropertyGroup(ref _current_entity);
-                _originalvalues = new APIPropertyGroup(ref _current_entity);
+                SetEntity(ref entryEntity);
+                //_current_entity = entryEntity;
+                //_currentvalues = new APIPropertyGroup(ref _current_entity);
+
             }
 
             public void SetEntity(ref TEntity newEntity)
             {
                 _current_entity = newEntity;
                 _currentvalues = new APIPropertyGroup(ref _current_entity);
+                _currentvalues.stateupdater = UpdateState; //primarily for the state change update
+
+                TEntity _newEntity = (TEntity)Activator.CreateInstance(typeof(TEntity));
+                Type _thisType = typeof(TEntity);
+
+                var enumerator = ((IEnumerable<PropertyInfo>)_thisType.GetProperties()).GetEnumerator();
+                while (enumerator.MoveNext())
+                {
+                    _thisType
+                        .GetProperty(enumerator.Current.Name)
+                        .SetValue(_newEntity, _thisType.GetProperty(enumerator.Current.Name).GetValue(_current_entity));
+                }
+                _originalvalues = new APIPropertyGroup(ref _newEntity);
+                _originalvalues.stateupdater = UpdateState; //primarily for the state change update
+                State = EntityState.Unchanged;
+
             }
 
             public APIPropertyContext Property(string propertyName)
@@ -604,19 +681,24 @@ namespace eComAPI.Data.Entity
 
             public APIPropertyGroup(ref TEntity CurrentEntity)
             {
-                thisType = CurrentEntity.GetType();
                 _CurrentEntity = CurrentEntity;
+                thisType = _CurrentEntity.GetType();
+                
             }
+
+            internal UpdateStateAccessor stateupdater;
+            
             /*
             public APIPropertyValues()
             {
                 _CurrentEntity = Current;
             }*/
 
+            /*
             public void SetValues(object newValues)
             {
 
-            }
+            }*/
 
             public object this[string propertyName]
             {
@@ -629,6 +711,7 @@ namespace eComAPI.Data.Entity
                     thisType
                         .GetProperty(propertyName)
                         .SetValue(_CurrentEntity, value);
+                    stateupdater(EntityState.Modified); // primarily for state change update.
                 }
             }
         }
@@ -644,7 +727,8 @@ namespace eComAPI.Data.Entity
             {
                 thisType = currentFieldInfo.PropertyType;
                 _thisField = currentFieldInfo;
-                fieldupdater(_thisFieldName, _thisField.GetValue(_CurrentEntity));
+                _thisFieldName = currentFieldInfo.Name;
+                //fieldupdater(_thisFieldName, _thisField.GetValue(_CurrentEntity));
             }
 
             internal string _thisFieldName = "";
@@ -659,18 +743,28 @@ namespace eComAPI.Data.Entity
                 }
                 set
                 {
-                    isModified = fieldupdater(_thisFieldName, value);
-                    _thisField.SetValue(_CurrentEntity, value);
+                    if (!_thisField.GetValue(_CurrentEntity).Equals(value))
+                    {
+                        _thisField.SetValue(_CurrentEntity, value);
+                        isModified = fieldupdater(_thisFieldName, value); //ensure state change status has applied.
+                        
+                    }
                 }
             }
 
             public bool isModified { get; set; }
-            public string PropertyName { get; set; }
+            public string PropertyName {
+                get
+                    {
+                    return _thisFieldName;
+                    }
+             }
 
             public APIPropertyContext(ref TEntity CurrentEntity)
             {
                 _CurrentEntity = CurrentEntity;
                 thisType = CurrentEntity.GetType();
+                isModified = false;
             }
 
 

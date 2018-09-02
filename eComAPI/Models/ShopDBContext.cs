@@ -17,9 +17,15 @@ namespace eComAPI.Models
 
         public ShopDBContext()
         {
+            //------------------------------------------------
+            //--   .Initialize Data Stores.
+            //--   .TODO: add Actual DataStore 
+
             Members = new StoreAP<Member>();
             Products = new StoreAP<Product>();
             ProductCollections = new StoreAP<ProductCollection>();
+
+            //------------------------------------------------
         }
 
         public StoreAP<Product> Products { get; set; }
@@ -38,10 +44,18 @@ namespace eComAPI.Models
             //add the user
             Members.Add(newUser);
 
-            QEntities<Member> qEntities = new QEntities<Member>();
-            qEntities.Where(q => q.MemberName == "Akutra").Select(q => q);
+            //-----------------------------------------
+            //- Tests
 
-            //Members.Entry(newUser).CurrentValues
+            //QEntities<Member> qEntities = new QEntities<Member>(Members.ToArray());
+            //qEntities.Where(q => q.MemberName.ToLower() == "akutra").Select(q => q);
+
+            //var userEntity = Members.Entry(newUser);
+            //int mId = (int)userEntity.Property("MemberId").CurrentValue;
+
+            //userEntity.CurrentValues["PasswordHash"] = "Pa$$word";
+            //userEntity.Property("PasswordHash").CurrentValue = "Passw0rd";
+            //-----------------------------------------
 
             //create default collection
             ProductCollection newCollection = new ProductCollection();
@@ -93,7 +107,7 @@ namespace eComAPI.Models
             newProduct = new Product();
             newProduct.Name = "Feeling Fuller For Longer";
             newProduct.CollectionId = cCol.CollectionId;
-            newProduct.defImage = "FeelingFuller_249px.pngg";
+            newProduct.defImage = "FeelingFuller_249px.png";
             newProduct.SKU = "EB0004";
             newProduct.Description = "Follow this simple step-by-step method to avoid overeating and see faster results. Save yourself a ton of research and confusion by avoiding other fad diets.";
             newProduct.Access = @"https://www.akutra-ramses.solutions/weightloss/";
@@ -101,6 +115,12 @@ namespace eComAPI.Models
             newProduct.ItemType = "weight loss";
             //add the new product
             Products.Add(newProduct);
+
+            //-----------------------------------------
+            //- Tests
+            //QEntities<Product> qEntities = new QEntities<Product>(Products.ToArray());
+            //qEntities.Where(q => q.Name.ToLower().Contains("the") ).Select(q => q.SKU);
+            //-----------------------------------------
         }
 
         #region Dispose
