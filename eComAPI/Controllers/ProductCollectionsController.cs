@@ -1,11 +1,13 @@
 ﻿using eComAPI.Data.Entity;
 using eComAPI.Models;
+using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Threading.Tasks;
+using System.Web;
 using System.Web.Http;
 using System.Web.Http.Description;
 
@@ -13,28 +15,53 @@ namespace eComAPI.Controllers
 {
     public class ProductCollectionsController : ApiController
     {
-        private ShopDBContext db = new ShopDBContext();
+        //private ShopDBContext db = new ShopDBContext();
 
-        // GET: api/ProductCollections
-        public IQueryable<ProductCollection> GetProductCollections()
+        public ProductCollectionsController()
         {
-            return db.ProductCollections.Values.AsQueryable();
+            dbInstance.DefaultData();
         }
 
-        // GET: api/ProductCollections/5
+        public ShopDBContext dbInstance
+        {
+            get
+            {
+                object ShopGlobal = HttpContext.Current.Application["ShopEntityDB"];
+                if (ShopGlobal == null)
+                {
+                    ShopGlobal = new ShopDBContext();
+                    HttpContext.Current.Application["ShopEntityDB"] = ShopGlobal as ShopDBContext;
+                }
+                return ShopGlobal as ShopDBContext;
+            }
+        }
+
+        // GET: ProductCollections ...get all collections
+        [HttpGet]
+        [Route("ProductCollections")]
+        public IHttpActionResult GetProductCollections() //
+        {
+            return new eOkResult((object)dbInstance.ProductCollections.Values);
+        }
+
+        // GET: ProductCollections/{Collection Id} (i.e. number) ...get a collection
+        [HttpGet]
+        [Route("ProductCollections/{id:int}")]
         [ResponseType(typeof(ProductCollection))]
         public async Task<IHttpActionResult> GetProductCollections(int id)
         {
-            ProductCollection productCollections = await db.ProductCollections.FindAsync(id);
+            ProductCollection productCollections = await dbInstance.ProductCollections.FindAsync(id);
             if (productCollections == null)
             {
                 return NotFound();
             }
 
-            return Ok(productCollections);
+            return new eOkResult(productCollections);
         }
 
-        // PUT: api/ProductCollections/5
+        // PUT: ProductCollections/{Collection Id} (i.e. number) ....update collection
+        [HttpPut]
+        [Route("ProductCollections/{id:int}")]
         [ResponseType(typeof(void))]
         public async Task<IHttpActionResult> PutProductCollections(int id, ProductCollection productCollections)
         {
@@ -48,7 +75,7 @@ namespace eComAPI.Controllers
                 return BadRequest();
             }
 
-            db.ProductCollections.Entry(productCollections).State = EntityState.Modified;
+            dbInstance.ProductCollections.Entry(productCollections).State = EntityState.Modified;
 
             try
             {
@@ -62,14 +89,16 @@ namespace eComAPI.Controllers
                 }
                 else
                 {
-                    throw;
+                    dbInstance.ProductCollections.Update(productCollections);
                 }
             }
 
             return StatusCode(HttpStatusCode.NoContent);
         }
 
-        // POST: api/ProductCollections
+        // POST: ProductCollections ...add collection
+        [HttpPost]
+        [Route("ProductCollections")]
         [ResponseType(typeof(ProductCollection))]
         public async Task<IHttpActionResult> PostProductCollections(ProductCollection productCollections)
         {
@@ -78,23 +107,25 @@ namespace eComAPI.Controllers
                 return BadRequest(ModelState);
             }
 
-            db.ProductCollections.Add(productCollections);
+            dbInstance.ProductCollections.Add(productCollections);
             //await db.SaveChangesAsync();
 
             return CreatedAtRoute("DefaultApi", new { id = productCollections.CollectionId }, productCollections);
         }
 
-        // DELETE: api/ProductCollections/5
+        // DELETE: ProductCollections/{Collection Id} (i.e. number) ....delete a collection
+        [HttpDelete]
+        [Route("ProductCollections/{id:int}")]
         [ResponseType(typeof(ProductCollection))]
         public async Task<IHttpActionResult> DeleteProductCollections(int id)
         {
-            ProductCollection productCollections = await db.ProductCollections.FindAsync(id);
+            ProductCollection productCollections = await dbInstance.ProductCollections.FindAsync(id);
             if (productCollections == null)
             {
                 return NotFound();
             }
 
-            db.ProductCollections.Remove(productCollections);
+            dbInstance.ProductCollections.Remove(productCollections);
             //await db.SaveChangesAsync();
 
             return Ok(productCollections);
@@ -104,14 +135,14 @@ namespace eComAPI.Controllers
         {
             if (disposing)
             {
-                db.Dispose();
+                dbInstance.Dispose();
             }
             base.Dispose(disposing);
         }
 
         private bool ProductCollectionsExists(int id)
         {
-            return db.ProductCollections.Count(e => e.CollectionId == id) > 0;
+            return dbInstance.ProductCollections.Count(e => e.CollectionId == id) > 0;
         }
     }
 }

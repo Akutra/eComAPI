@@ -61,4 +61,17 @@ C:\Users\Atenosis\Documents\Visual Studio 2017\Projects\eComAPI\eComAPI\obj\Debu
 C:\Users\Atenosis\Documents\Visual Studio 2017\Projects\eComAPI\eComAPI\obj\Debug\eComAPI.csproj.CopyComplete
 C:\Users\Atenosis\Documents\Visual Studio 2017\Projects\eComAPI\eComAPI\obj\Debug\eComAPI.dll
 C:\Users\Atenosis\Documents\Visual Studio 2017\Projects\eComAPI\eComAPI\obj\Debug\eComAPI.pdb
+C:\Users\Atenosis\Documents\Visual Studio 2017\Projects\eComAPI\eComAPI\bin\Microsoft.Web.Infrastructure.dll
+C:\Users\Atenosis\Documents\Visual Studio 2017\Projects\eComAPI\eComAPI\bin\System.Web.Helpers.dll
+C:\Users\Atenosis\Documents\Visual Studio 2017\Projects\eComAPI\eComAPI\bin\System.Web.Mvc.dll
+C:\Users\Atenosis\Documents\Visual Studio 2017\Projects\eComAPI\eComAPI\bin\System.Web.Razor.dll
+C:\Users\Atenosis\Documents\Visual Studio 2017\Projects\eComAPI\eComAPI\bin\System.Web.WebPages.Deployment.dll
+C:\Users\Atenosis\Documents\Visual Studio 2017\Projects\eComAPI\eComAPI\bin\System.Web.WebPages.dll
+C:\Users\Atenosis\Documents\Visual Studio 2017\Projects\eComAPI\eComAPI\bin\System.Web.WebPages.Razor.dll
+C:\Users\Atenosis\Documents\Visual Studio 2017\Projects\eComAPI\eComAPI\bin\System.Web.Helpers.xml
+C:\Users\Atenosis\Documents\Visual Studio 2017\Projects\eComAPI\eComAPI\bin\System.Web.Mvc.xml
+C:\Users\Atenosis\Documents\Visual Studio 2017\Projects\eComAPI\eComAPI\bin\System.Web.Razor.xml
+C:\Users\Atenosis\Documents\Visual Studio 2017\Projects\eComAPI\eComAPI\bin\System.Web.WebPages.xml
+C:\Users\Atenosis\Documents\Visual Studio 2017\Projects\eComAPI\eComAPI\bin\System.Web.WebPages.Deployment.xml
+C:\Users\Atenosis\Documents\Visual Studio 2017\Projects\eComAPI\eComAPI\bin\System.Web.WebPages.Razor.xml
 C:\Users\Atenosis\Documents\Visual Studio 2017\Projects\eComAPI\eComAPI\obj\Debug\eComAPI.csprojAssemblyReference.cache

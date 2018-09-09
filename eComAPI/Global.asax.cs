@@ -1,4 +1,5 @@
-﻿using System;
+﻿using eComAPI.Models;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Web;
@@ -12,6 +13,7 @@ namespace eComAPI
         protected void Application_Start()
         {
             GlobalConfiguration.Configure(WebApiConfig.Register);
+            this.Application["ShopEntityDB"] = new ShopDBContext() as ShopDBContext;
         }
     }
 }

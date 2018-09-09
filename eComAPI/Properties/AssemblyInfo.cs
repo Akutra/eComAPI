@@ -6,13 +6,18 @@ using System.Runtime.InteropServices;
 // set of attributes. Change these attribute values to modify the information
 // associated with an assembly.
 [assembly: AssemblyTitle("eComAPI")]
-[assembly: AssemblyDescription("")]
+[assembly: AssemblyDescription("eComAPI RESTful Services engine revision")]
 [assembly: AssemblyConfiguration("")]
-[assembly: AssemblyCompany("")]
-[assembly: AssemblyProduct("eComAPI")]
-[assembly: AssemblyCopyright("Copyright ©  2018")]
+[assembly: AssemblyCompany("LeapMaker LLC")]
+[assembly: AssemblyProduct("Ikhwwtre")]
+[assembly: AssemblyCopyright("Copyright © 2018")]
 [assembly: AssemblyTrademark("")]
 [assembly: AssemblyCulture("")]
+[assembly: AssemblyMetadata("FullyQualifiedName", "RESTful-engine-eComAPI-LeapMaker-Ikhwwtre-stargroup")]
+[assembly: AssemblyMetadata("revloop", "1")]
+[assembly: AssemblyMetadata("enkre", "2")]
+[assembly: AssemblyMetadata("echo", "A")]
+[assembly: AssemblyMetadata("CreationDatum", "09-08-0/45 AI")]
 
 // Setting ComVisible to false makes the types in this assembly not visible 
 // to COM components.  If you need to access a type in this assembly from 

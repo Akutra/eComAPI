@@ -6,33 +6,41 @@ using eComAPI.Data.Entity;
 
 namespace eComAPI.Models
 {
+    public class html
+    {
+        private string _content = "";
+        public html(string pagecontent)
+        {
+            _content = pagecontent;
+        }
+
+        public override string ToString()
+        {
+            return _content;
+        }
+    }
     public class ShopDBContext : IDisposable
     {
-        // You can add custom code to this file. Changes will not be overwritten.
-        // 
-        // If you want Entity Framework to drop and regenerate your database
-        // automatically whenever you change your model schema, please use data migrations.
-        // For more information refer to the documentation:
-        // http://msdn.microsoft.com/en-us/data/jj591621.aspx
 
+        public StoreAP<Product> Products;
+
+        public StoreAP<ProductCollection> ProductCollections;
+
+        public StoreAP<Member> Members;
+        
         public ShopDBContext()
         {
-            //------------------------------------------------
+            //---------------------------------------------------------
             //--   .Initialize Data Stores.
-            //--   .TODO: add Actual DataStore 
+            //--   .TODO: add Actual DataStore
+            //--   .      underlying DB Store should be "Singularity".
 
             Members = new StoreAP<Member>();
             Products = new StoreAP<Product>();
             ProductCollections = new StoreAP<ProductCollection>();
 
-            //------------------------------------------------
+            //---------------------------------------------------------
         }
-
-        public StoreAP<Product> Products { get; set; }
-
-        public StoreAP<ProductCollection> ProductCollections { get; set; }
-
-        public StoreAP<Member> Members { get; set; }
 
         public void DefaultData()
         {
@@ -118,6 +126,8 @@ namespace eComAPI.Models
 
             //-----------------------------------------
             //- Tests
+
+            //Products.Where(q => q.Name.ToLower().Contains("the")).Select(q => q.SKU);
             //QEntities<Product> qEntities = new QEntities<Product>(Products.ToArray());
             //qEntities.Where(q => q.Name.ToLower().Contains("the") ).Select(q => q.SKU);
             //-----------------------------------------
@@ -126,7 +136,7 @@ namespace eComAPI.Models
         #region Dispose
         private bool disposed = false; // to detect redundant calls
 
-        protected virtual void Dispose(bool disposing)
+        private void Dispose(bool disposing)
         {
             if (!disposed)
             {

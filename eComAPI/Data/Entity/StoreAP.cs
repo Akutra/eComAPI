@@ -114,7 +114,7 @@ namespace eComAPI.Data.Entity
             _current_position = 0;
         }
 
-        public TEntity this[string index]
+        public TEntity this[object index]
         {
             get
             {
@@ -216,11 +216,14 @@ namespace eComAPI.Data.Entity
         }
     }
 
-    public class StoreAP<TEntity> : IEnumerable<TEntity>
+    public class StoreAP<TEntity> : IEnumerable<TEntity>, IEnumerator<TEntity>, ICollection<TEntity>
     {
         //private string _idxHash = "";
+        //internal APIPropertyGroup _PropertyGroup;
         internal Dictionary<object, TEntity> _LocalStore = new Dictionary<object, TEntity>();
-        internal APIPropertyGroup _PropertyGroup;
+        internal List<APIPropertyGroup> _CurrentValues = new List<APIPropertyGroup>();
+        internal QPropertyGroup _QuantumStruct;
+        internal uint position = 0;
 
         //Expose the dictionary values with get only.
         public ICollection<TEntity> Values
@@ -231,26 +234,76 @@ namespace eComAPI.Data.Entity
             }
         }
 
+        public bool Contains(TEntity entity)
+        {
+            return _LocalStore.Values.Contains(entity);
+        }
 
-        public Type thisType;
+        public int Count
+        {
+            get
+            {
+                return _LocalStore.Values.Count();
+            }
+        }
 
-        internal QPropertyGroup _QuantumStruct;
+        public bool MoveNext()
+        {
+            if( position < _LocalStore.Values.Count() )
+            {
+                position++;
+                return true;
+            }
+            return false;
+        }
+
+        public void Reset()
+        {
+            position = 0;
+        }
+
+        public void Clear()
+        {
+            //TODO: Delete all records.
+            throw new NotImplementedException();
+        }
+
+        public Type thisType { get; } // public read only
 
         //TODO
-        public TEntity Current { get; set; }
+        public bool IsReadOnly => false;
+
+        object IEnumerator.Current => this.Current; //Simple forward
+
+        public TEntity Current {
+            get
+            {
+                if( _LocalStore.Values.Count() > 0 )
+                    return _LocalStore.Values.ToArray()[position];
+                else
+                {
+                    return Create();
+                }
+            }
+        }
 
         #region Constructors
         public StoreAP()
         {
-            Current = Create(); 
+            //Current = Create(); 
             thisType = Current.GetType();
             _QuantumStruct = new QPropertyGroup(thisType);
         }
         #endregion
 
-
-
         #region DB Creation
+        void ICollection<TEntity>.Add(TEntity entity)
+        {
+            // Add without the return
+            // auto-populated fields still process
+
+            this.Add(entity);
+        }
         public TEntity Add(TEntity entity)
         {
             //TODO Add DataBase functionality
@@ -324,6 +377,7 @@ namespace eComAPI.Data.Entity
         //public virtual TDerivedEntity Create<TDerivedEntity>() where TDerivedEntity : class, TEntity;
         #endregion
 
+        #region Updaters
         //this could possibly be Add-or-Update, TODO: make sure it would be ok to Add if not found.
         public void Update(TEntity entity, object idxField = null)
         {
@@ -382,6 +436,7 @@ namespace eComAPI.Data.Entity
                     .SetValue(orgEntity, _thisType.GetProperty(propertyName).GetValue(newEntity));
             }
         }
+        #endregion
 
         #region Removers
         public void RemoveRange(IEnumerable entities)
@@ -392,9 +447,9 @@ namespace eComAPI.Data.Entity
                 Remove(thisType.GetProperty(_QuantumStruct.KeyField).GetValue(_entity)); //get a hash for the remover.
             }
         }
-        public void Remove(TEntity entity)
+        public bool Remove(TEntity entity)
         {
-            Remove(thisType.GetProperty(_QuantumStruct.KeyField).GetValue(entity)); //get a hash for the remover.
+            return Remove(thisType.GetProperty(_QuantumStruct.KeyField).GetValue(entity)); //get a hash for the remover.
         }
 
         public bool Remove(object indexHash)
@@ -492,7 +547,13 @@ namespace eComAPI.Data.Entity
                     //on error return empty object (default)
                     cancellationToken.ThrowIfCancellationRequested(); //allow it to be cancelled.
 
-                    return Task.FromResult(_LocalStore[eComAPI.Data.Entity.Comparables.getEquatable(_QuantumStruct._fields[_QuantumStruct.KeyField]._keys[_thisKey])]);
+                    //var _kfv = _QuantumStruct._fields[_QuantumStruct.KeyField]._keys[_thisKey];
+                    //var _obj = eComAPI.Data.Entity.Comparables.getEquatable(_kfv);
+                    if(_LocalStore.ContainsKey(_thisKey))
+                        return Task.FromResult(_LocalStore[_thisKey]);
+
+
+                    //return Task.FromResult(_LocalStore[_thisKey]);
 
                 }
                 catch (Exception _e) { } //Not found? Do nothing and return empty object, TODO more handling
@@ -508,7 +569,7 @@ namespace eComAPI.Data.Entity
         /// <returns>An object if found otherwise an empty object</returns>
         public Task<TEntity> FindAsync(params object[] keyValues)
         {
-            return FindAsync(null, keyValues); //no need to duplicate code here.
+            return FindAsync(new CancellationToken(false), keyValues); //no need to duplicate code here.
         }
         #endregion
 
@@ -560,9 +621,6 @@ namespace eComAPI.Data.Entity
         }
         #endregion
 
-        internal List<APIPropertyGroup> _CurrentValues = new List<APIPropertyGroup>();
-        //internal APIEntityEntry<TEntity> _currentEntry = new APIEntityEntry<TEntity>();
-
         #region Delegates
         //Delegates
         internal delegate void UpdateAccessor(TEntity entity, object idxField = null);
@@ -570,6 +628,14 @@ namespace eComAPI.Data.Entity
         internal delegate void UpdateStateAccessor(EntityState newState);
         #endregion
 
+        public void CopyTo(TEntity[] array, int arrayIndex)
+        {
+            //TODO Replicate to an Array
+            throw new NotImplementedException();
+        }
+
+        #region API Entry
+        //internal APIEntityEntry<TEntity> _currentEntry = new APIEntityEntry<TEntity>();
         public eComAPI.Data.Entity.StoreAP<TEntity>.APIEntityEntry Entry(TEntity SelectedEntity)
         {
             //return new eComAPI.Data.Entity.StoreAP<TEntity>.APIEntityEntry<TEntity>();
@@ -669,7 +735,9 @@ namespace eComAPI.Data.Entity
                 return _newPropContext;
             }
         }
+        #endregion
 
+        #region API Properties
         /// <summary>
         /// Properties collection
         /// </summary>
@@ -769,5 +837,34 @@ namespace eComAPI.Data.Entity
 
 
         }
+        #endregion
+
+        #region Dispose
+        private bool disposed = false; // to detect redundant calls
+
+        protected virtual void Dispose(bool disposing)
+        {
+            if (!disposed)
+            {
+                if (disposing)
+                {
+                    //nothing here for the moment...
+                }
+
+                disposed = true;
+            }
+        }
+
+        ~StoreAP()
+        {
+            Dispose(false);
+        }
+
+        public void Dispose()
+        {
+            Dispose(true);
+            GC.SuppressFinalize(this);
+        }
+        #endregion
     }
 }

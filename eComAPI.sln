@@ -5,8 +5,6 @@ VisualStudioVersion = 15.0.27703.2035
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "eComAPI", "eComAPI\eComAPI.csproj", "{DD1678A7-3B40-498B-A695-20BB642A83DF}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "eComAPI.Tests", "eComAPI.Tests\eComAPI.Tests.csproj", "{3C7F30EF-1C1C-4A5A-98E8-92DE968CA23C}"
-EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -17,10 +15,6 @@ Global
 		{DD1678A7-3B40-498B-A695-20BB642A83DF}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{DD1678A7-3B40-498B-A695-20BB642A83DF}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{DD1678A7-3B40-498B-A695-20BB642A83DF}.Release|Any CPU.Build.0 = Release|Any CPU
-		{3C7F30EF-1C1C-4A5A-98E8-92DE968CA23C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{3C7F30EF-1C1C-4A5A-98E8-92DE968CA23C}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{3C7F30EF-1C1C-4A5A-98E8-92DE968CA23C}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{3C7F30EF-1C1C-4A5A-98E8-92DE968CA23C}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
