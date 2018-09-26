@@ -151,6 +151,7 @@
     <Compile Include="App_Start\WebApiConfig.cs" />
     <Compile Include="Controllers\DefaultController.cs" />
     <Compile Include="Controllers\ProductCollectionsController.cs" />
+    <Compile Include="Controllers\ProductsController.cs" />
     <Compile Include="Data\Entity\Comparables.cs" />
     <Compile Include="Data\Entity\StoreAP.cs" />
     <Compile Include="Global.asax.cs">

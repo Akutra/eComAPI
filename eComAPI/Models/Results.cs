@@ -113,8 +113,6 @@ namespace eComAPI.Models
                         CreationDatum = ((CustomAttributeTypedArgument)((CustomAttributeData)attr).ConstructorArguments[1]).Value.ToString();
                 }
             }
-
-            //_md.ToString();
         }
     }
 
