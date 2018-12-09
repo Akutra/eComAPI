@@ -41,6 +41,30 @@ namespace eComAPI.Controllers
         [Route("ProductCollections")]
         public IHttpActionResult GetProductCollections() //
         {
+            bool count = false;
+            object rt = null;
+
+            try
+            {
+                //get the search string from the content
+                if (HttpContext.Current.Request.QueryString.Count > 0)
+                {
+                    if (HttpContext.Current.Request.QueryString["count"] == "true")
+                        count = true;
+                }
+
+            }
+            catch (Exception _e) { }
+
+            if (count)
+            {
+                rt = new { count = dbInstance.ProductCollections.Values.Count };
+            }
+            else
+            {
+                rt = (object)dbInstance.ProductCollections.Values;
+            }
+
             return new eOkResult((object)dbInstance.ProductCollections.Values);
         }
 

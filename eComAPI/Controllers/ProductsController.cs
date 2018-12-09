@@ -41,7 +41,30 @@ namespace eComAPI.Controllers
         [Route("Products")]
         public IHttpActionResult GetProducts() //
         {
-            return new eOkResult((object)dbInstance.Products.Values);
+            bool count = false;
+            object rt = null;
+
+            try
+            {
+                //get the search string from the content
+                if (HttpContext.Current.Request.QueryString.Count > 0)
+                {
+                    if (HttpContext.Current.Request.QueryString["count"] == "true")
+                        count = true;
+                }
+
+            }
+            catch (Exception _e) { }
+
+            if (count)
+            {
+                rt = new { count = dbInstance.Products.Values.Count };
+            } else
+            {
+                rt = (object)dbInstance.Products.Values;
+            }
+
+            return new eOkResult(rt);
         }
 
         // GET: Products/{Product Id} (i.e. number) ...get a product
